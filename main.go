@@ -18,8 +18,9 @@ func enableRawMode() {
 
 	origTermios = raw
 
-	raw.Iflag &= ^uint32(unix.IXON | unix.ICRNL)
+	raw.Iflag &= ^uint32(unix.IXON | unix.ICRNL | unix.BRKINT | unix.INPCK | unix.ISTRIP)
 	raw.Oflag &= ^uint32(unix.OPOST)
+	raw.Cflag |= (unix.CS8)
 	raw.Lflag &= ^uint32(unix.ECHO | unix.ICANON | unix.ISIG | unix.IEXTEN)
 
 	err = unix.IoctlSetTermios(int(os.Stderr.Fd()), unix.TCSETS, raw)
