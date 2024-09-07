@@ -51,9 +51,9 @@ func main() {
 		}
 
 		if unicode.IsControl(rune(c)) {
-			fmt.Printf("%d\n", c)
+			fmt.Printf("%d\r\n", c)
 		} else {
-			fmt.Printf("%d ('%c')\n", c, c)
+			fmt.Printf("%d ('%c')\r\n", c, c)
 		}
 	}
 }
