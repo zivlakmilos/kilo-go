@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"unicode"
 
 	"golang.org/x/sys/unix"
 )
@@ -16,7 +18,7 @@ func enableRawMode() {
 
 	origTermios = raw
 
-	raw.Lflag &= ^uint32(unix.ECHO | unix.ICANON)
+	raw.Lflag &= ^uint32(unix.ECHO | unix.ICANON | unix.ISIG)
 
 	err = unix.IoctlSetTermios(int(os.Stderr.Fd()), unix.TCSETS, raw)
 	if err != nil {
@@ -44,6 +46,12 @@ func main() {
 
 		if c == 'q' {
 			break
+		}
+
+		if unicode.IsControl(rune(c)) {
+			fmt.Printf("%d\n", c)
+		} else {
+			fmt.Printf("%d ('%c')\n", c, c)
 		}
 	}
 }
