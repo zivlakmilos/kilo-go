@@ -16,7 +16,7 @@ func enableRawMode() {
 
 	origTermios = raw
 
-	raw.Lflag &= ^uint32(unix.ECHO)
+	raw.Lflag &= ^uint32(unix.ECHO | unix.ICANON)
 
 	err = unix.IoctlSetTermios(int(os.Stderr.Fd()), unix.TCSETS, raw)
 	if err != nil {
