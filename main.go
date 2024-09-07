@@ -23,6 +23,9 @@ func enableRawMode() {
 	raw.Cflag |= (unix.CS8)
 	raw.Lflag &= ^uint32(unix.ECHO | unix.ICANON | unix.ISIG | unix.IEXTEN)
 
+	raw.Cc[unix.VMIN] = 0
+	raw.Cc[unix.VTIME] = 1
+
 	err = unix.IoctlSetTermios(int(os.Stderr.Fd()), unix.TCSETS, raw)
 	if err != nil {
 		return
@@ -42,10 +45,10 @@ func main() {
 	b := make([]byte, 1)
 	for {
 		n, err := os.Stdin.Read(b)
-		if err != nil || n < 1 {
-			return
+		c := byte(0)
+		if err == nil && n > 0 {
+			c = b[0]
 		}
-		c := b[0]
 
 		if c == 'q' {
 			break
