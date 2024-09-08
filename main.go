@@ -46,6 +46,10 @@ func disableRawMode() {
 	}
 }
 
+func ctrlKey(k byte) byte {
+	return (k & 0x1f)
+}
+
 func main() {
 	enableRawMode()
 	defer disableRawMode()
@@ -64,7 +68,7 @@ func main() {
 			c = b[0]
 		}
 
-		if c == 'q' {
+		if c == ctrlKey('q') {
 			break
 		}
 
