@@ -78,11 +78,16 @@ func editorProcessKeypress() {
 	}
 }
 
+func editorRefreshScreen() {
+	os.Stdout.WriteString("\x1b[2J")
+}
+
 func main() {
 	enableRawMode()
 	defer disableRawMode()
 
 	for {
+		editorRefreshScreen()
 		editorProcessKeypress()
 	}
 }
