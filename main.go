@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"unicode"
 
 	"golang.org/x/sys/unix"
 )
@@ -50,32 +49,40 @@ func ctrlKey(k byte) byte {
 	return (k & 0x1f)
 }
 
-func main() {
-	enableRawMode()
-	defer disableRawMode()
-
+func editorReadKey() byte {
 	b := make([]byte, 1)
+
 	for {
 		n, err := os.Stdin.Read(b)
 		if err != nil {
 			if err.Error() != "EOF" {
-				die("Read", err)
+				die("editorReadKey", err)
 			}
 		}
 
-		c := byte(0)
 		if n > 0 {
-			c = b[0]
-		}
-
-		if c == ctrlKey('q') {
 			break
 		}
+	}
 
-		if unicode.IsControl(rune(c)) {
-			fmt.Printf("%d\r\n", c)
-		} else {
-			fmt.Printf("%d ('%c')\r\n", c, c)
-		}
+	return b[0]
+}
+
+func editorProcessKeypress() {
+	ch := editorReadKey()
+
+	switch ch {
+	case ctrlKey('q'):
+		os.Exit(0)
+		break
+	}
+}
+
+func main() {
+	enableRawMode()
+	defer disableRawMode()
+
+	for {
+		editorProcessKeypress()
 	}
 }
