@@ -10,6 +10,9 @@ import (
 var origTermios *unix.Termios
 
 func die(fn string, err error) {
+	os.Stdout.WriteString("\x1b[2J")
+	os.Stdout.WriteString("\x1b[H")
+
 	fmt.Fprintf(os.Stderr, "%s: %v", fn, err)
 	os.Exit(1)
 }
@@ -73,6 +76,8 @@ func editorProcessKeypress() {
 
 	switch ch {
 	case ctrlKey('q'):
+		os.Stdout.WriteString("\x1b[2J")
+		os.Stdout.WriteString("\x1b[H")
 		os.Exit(0)
 		break
 	}
