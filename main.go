@@ -80,6 +80,7 @@ func editorProcessKeypress() {
 
 func editorRefreshScreen() {
 	os.Stdout.WriteString("\x1b[2J")
+	os.Stdout.WriteString("\x1b[H")
 }
 
 func main() {
