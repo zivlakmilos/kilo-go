@@ -138,7 +138,11 @@ func editorProcessKeypress() {
 
 func editorDrawRows() {
 	for y := 0; y < e.screenRows; y++ {
-		os.Stdout.WriteString("~\r\n")
+		os.Stdout.WriteString("~")
+
+		if y < e.screenRows-1 {
+			os.Stdout.WriteString("\r\n")
+		}
 	}
 }
 
