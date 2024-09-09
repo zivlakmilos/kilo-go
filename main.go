@@ -142,6 +142,7 @@ func editorDrawRows(sw io.StringWriter) {
 	for y := 0; y < e.screenRows; y++ {
 		sw.WriteString("~")
 
+		sw.WriteString("\x1b[K")
 		if y < e.screenRows-1 {
 			sw.WriteString("\r\n")
 		}
@@ -152,7 +153,6 @@ func editorRefreshScreen() {
 	buff := bytes.NewBuffer([]byte{})
 
 	buff.WriteString("\x1b[?25l")
-	buff.WriteString("\x1b[2J")
 	buff.WriteString("\x1b[H")
 
 	editorDrawRows(buff)
