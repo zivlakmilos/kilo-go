@@ -7,7 +7,11 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-var origTermios *unix.Termios
+type EditorConfig struct {
+	origTermios *unix.Termios
+}
+
+var e EditorConfig
 
 func die(fn string, err error) {
 	os.Stdout.WriteString("\x1b[2J")
@@ -23,7 +27,7 @@ func enableRawMode() {
 		die("IoctlGetTermios", err)
 	}
 
-	origTermios = raw
+	e.origTermios = raw
 
 	raw.Iflag &= ^uint32(unix.IXON | unix.ICRNL | unix.BRKINT | unix.INPCK | unix.ISTRIP)
 	raw.Oflag &= ^uint32(unix.OPOST)
@@ -40,8 +44,8 @@ func enableRawMode() {
 }
 
 func disableRawMode() {
-	if origTermios != nil {
-		err := unix.IoctlSetTermios(int(os.Stderr.Fd()), unix.TCSETS, origTermios)
+	if e.origTermios != nil {
+		err := unix.IoctlSetTermios(int(os.Stderr.Fd()), unix.TCSETS, e.origTermios)
 		if err != nil {
 			die("IoctlSetTermios", err)
 		}
