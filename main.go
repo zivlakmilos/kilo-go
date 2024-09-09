@@ -77,10 +77,48 @@ func editorReadKey() byte {
 	return b[0]
 }
 
-func getWindowSize() (int, int, error) {
-	size, err := unix.IoctlGetWinsize(int(os.Stdin.Fd()), unix.TIOCGWINSZ)
+func getCursorPosition() (int, int, error) {
+	_, err := os.Stdout.WriteString("\x1b[6n")
 	if err != nil {
 		return 0, 0, err
+	}
+
+	buff := make([]byte, 32)
+	i := 0
+
+	for {
+		b := make([]byte, 1)
+		n, _ := os.Stdin.Read(b)
+		if n < 1 {
+			break
+		}
+
+		buff[i] = b[0]
+		if buff[i] == 'R' {
+			break
+		}
+
+		i++
+	}
+
+	buff[i] = 0
+
+	var rows int
+	var cols int
+	fmt.Sscanf(string(buff[2:]), "%d;%d", &rows, &cols)
+
+	return rows, cols, nil
+}
+
+func getWindowSize() (int, int, error) {
+	size, err := unix.IoctlGetWinsize(int(os.Stdin.Fd()), unix.TIOCGWINSZ)
+	if err != nil || size.Col == 0 {
+		_, err = os.Stdout.WriteString("\x1b[999C\x1b[999B")
+		if err != nil {
+			return 0, 0, err
+		}
+
+		return getCursorPosition()
 	}
 
 	return int(size.Col), int(size.Row), nil
