@@ -8,6 +8,8 @@ import (
 )
 
 type EditorConfig struct {
+	screenRows  int
+	screenCols  int
 	origTermios *unix.Termios
 }
 
@@ -75,6 +77,15 @@ func editorReadKey() byte {
 	return b[0]
 }
 
+func getWindowSize() (int, int, error) {
+	size, err := unix.IoctlGetWinsize(int(os.Stdin.Fd()), unix.TIOCGWINSZ)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return int(size.Col), int(size.Row), nil
+}
+
 func editorProcessKeypress() {
 	ch := editorReadKey()
 
@@ -88,7 +99,7 @@ func editorProcessKeypress() {
 }
 
 func editorDrawRows() {
-	for y := 0; y < 24; y++ {
+	for y := 0; y < e.screenRows; y++ {
 		os.Stdout.WriteString("~\r\n")
 	}
 }
@@ -102,9 +113,21 @@ func editorRefreshScreen() {
 	os.Stdout.WriteString("\x1b[H")
 }
 
+func initEditor() {
+	c, r, err := getWindowSize()
+	if err != nil {
+		die("getWindowSize", err)
+	}
+
+	e.screenCols = c
+	e.screenRows = r
+}
+
 func main() {
 	enableRawMode()
 	defer disableRawMode()
+
+	initEditor()
 
 	for {
 		editorRefreshScreen()
