@@ -83,8 +83,18 @@ func editorProcessKeypress() {
 	}
 }
 
+func editorDrawRows() {
+	for y := 0; y < 24; y++ {
+		os.Stdout.WriteString("~\r\n")
+	}
+}
+
 func editorRefreshScreen() {
 	os.Stdout.WriteString("\x1b[2J")
+	os.Stdout.WriteString("\x1b[H")
+
+	editorDrawRows()
+
 	os.Stdout.WriteString("\x1b[H")
 }
 
