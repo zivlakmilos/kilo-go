@@ -151,12 +151,14 @@ func editorDrawRows(sw io.StringWriter) {
 func editorRefreshScreen() {
 	buff := bytes.NewBuffer([]byte{})
 
+	buff.WriteString("\x1b[?25l")
 	buff.WriteString("\x1b[2J")
 	buff.WriteString("\x1b[H")
 
 	editorDrawRows(buff)
 
 	buff.WriteString("\x1b[H")
+	buff.WriteString("\x1b[?25h")
 
 	os.Stdout.WriteString(buff.String())
 }
