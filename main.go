@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 
 	"golang.org/x/sys/unix"
@@ -136,23 +138,27 @@ func editorProcessKeypress() {
 	}
 }
 
-func editorDrawRows() {
+func editorDrawRows(sw io.StringWriter) {
 	for y := 0; y < e.screenRows; y++ {
-		os.Stdout.WriteString("~")
+		sw.WriteString("~")
 
 		if y < e.screenRows-1 {
-			os.Stdout.WriteString("\r\n")
+			sw.WriteString("\r\n")
 		}
 	}
 }
 
 func editorRefreshScreen() {
-	os.Stdout.WriteString("\x1b[2J")
-	os.Stdout.WriteString("\x1b[H")
+	buff := bytes.NewBuffer([]byte{})
 
-	editorDrawRows()
+	buff.WriteString("\x1b[2J")
+	buff.WriteString("\x1b[H")
 
-	os.Stdout.WriteString("\x1b[H")
+	editorDrawRows(buff)
+
+	buff.WriteString("\x1b[H")
+
+	os.Stdout.WriteString(buff.String())
 }
 
 func initEditor() {
