@@ -15,9 +15,11 @@ const (
 	ARROW_LEFT  int = 1000
 	ARROW_RIGHT int = 1001
 	ARROW_UP    int = 1002
-	ARROW_DOWN  int = 1003
-	PAGE_UP     int = 1004
-	PAGE_DOWN   int = 1005
+	ARROW_DOWN  int = 1004
+	HOME_KEY    int = 1005
+	END_KEY     int = 1006
+	PAGE_UP     int = 1007
+	PAGE_DOWN   int = 1008
 )
 
 type EditorConfig struct {
@@ -114,10 +116,18 @@ func editorReadKey() int {
 
 				if seq[2] == '~' {
 					switch seq[1] {
+					case '1':
+						return HOME_KEY
+					case '4':
+						return END_KEY
 					case '5':
 						return PAGE_UP
 					case '6':
 						return PAGE_DOWN
+					case '7':
+						return HOME_KEY
+					case '8':
+						return END_KEY
 					}
 				}
 
@@ -133,6 +143,10 @@ func editorReadKey() int {
 				return ARROW_RIGHT
 			case 'D':
 				return ARROW_LEFT
+			case 'H':
+				return HOME_KEY
+			case 'F':
+				return END_KEY
 			}
 		}
 
@@ -224,6 +238,12 @@ func editorProcessKeypress() {
 		ARROW_LEFT,
 		ARROW_RIGHT:
 		editorMoveCursor(ch)
+
+	case HOME_KEY:
+		e.cx = 0
+
+	case END_KEY:
+		e.cx = e.screenCols - 1
 
 	case PAGE_UP, PAGE_DOWN:
 		times := e.screenRows
