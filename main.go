@@ -9,6 +9,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+const KILO_VERSION = "0.0.1"
+
 type EditorConfig struct {
 	screenRows  int
 	screenCols  int
@@ -140,7 +142,24 @@ func editorProcessKeypress() {
 
 func editorDrawRows(sw io.StringWriter) {
 	for y := 0; y < e.screenRows; y++ {
-		sw.WriteString("~")
+		if y == e.screenRows/3 {
+			welcome := fmt.Sprintf("Kilo editor -- version %s", KILO_VERSION)
+			if len(welcome) > e.screenCols {
+				welcome = welcome[:e.screenCols]
+			}
+			padding := (e.screenCols - len(welcome)) / 2
+			if padding > 0 {
+				sw.WriteString("~")
+				padding--
+			}
+			for padding > 0 {
+				sw.WriteString(" ")
+				padding--
+			}
+			sw.WriteString(welcome)
+		} else {
+			sw.WriteString("~")
+		}
 
 		sw.WriteString("\x1b[K")
 		if y < e.screenRows-1 {
