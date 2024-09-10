@@ -12,14 +12,15 @@ import (
 const KILO_VERSION = "0.0.1"
 
 const (
-	ARROW_LEFT  int = 1000
-	ARROW_RIGHT int = 1001
-	ARROW_UP    int = 1002
-	ARROW_DOWN  int = 1004
-	HOME_KEY    int = 1005
-	END_KEY     int = 1006
-	PAGE_UP     int = 1007
-	PAGE_DOWN   int = 1008
+	ARROW_LEFT int = iota + 1000
+	ARROW_RIGHT
+	ARROW_UP
+	ARROW_DOWN
+	DEL_KEY
+	HOME_KEY
+	END_KEY
+	PAGE_UP
+	PAGE_DOWN
 )
 
 type EditorConfig struct {
