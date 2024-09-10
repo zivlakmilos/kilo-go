@@ -12,6 +12,8 @@ import (
 const KILO_VERSION = "0.0.1"
 
 type EditorConfig struct {
+	cx          int
+	cy          int
 	screenRows  int
 	screenCols  int
 	origTermios *unix.Termios
@@ -128,6 +130,19 @@ func getWindowSize() (int, int, error) {
 	return int(size.Col), int(size.Row), nil
 }
 
+func editorMoveCursor(key byte) {
+	switch key {
+	case 'a':
+		e.cx--
+	case 'd':
+		e.cx++
+	case 'w':
+		e.cy--
+	case 's':
+		e.cy++
+	}
+}
+
 func editorProcessKeypress() {
 	ch := editorReadKey()
 
@@ -136,7 +151,9 @@ func editorProcessKeypress() {
 		os.Stdout.WriteString("\x1b[2J")
 		os.Stdout.WriteString("\x1b[H")
 		os.Exit(0)
-		break
+
+	case 'w', 's', 'a', 'd':
+		editorMoveCursor(ch)
 	}
 }
 
@@ -176,13 +193,16 @@ func editorRefreshScreen() {
 
 	editorDrawRows(buff)
 
-	buff.WriteString("\x1b[H")
+	buff.WriteString(fmt.Sprintf("\x1b[%d;%dH", e.cy+1, e.cx+1))
 	buff.WriteString("\x1b[?25h")
 
 	os.Stdout.WriteString(buff.String())
 }
 
 func initEditor() {
+	e.cx = 0
+	e.cy = 0
+
 	c, r, err := getWindowSize()
 	if err != nil {
 		die("getWindowSize", err)
