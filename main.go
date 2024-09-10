@@ -11,6 +11,13 @@ import (
 
 const KILO_VERSION = "0.0.1"
 
+const (
+	ARROW_LEFT  int = 1000
+	ARROW_RIGHT int = 1001
+	ARROW_UP    int = 1002
+	ARROW_DOWN  int = 1003
+)
+
 type EditorConfig struct {
 	cx          int
 	cy          int
@@ -64,7 +71,7 @@ func ctrlKey(k byte) byte {
 	return (k & 0x1f)
 }
 
-func editorReadKey() byte {
+func editorReadKey() int {
 	b := make([]byte, 1)
 
 	for {
@@ -80,7 +87,38 @@ func editorReadKey() byte {
 		}
 	}
 
-	return b[0]
+	if b[0] == '\x1b' {
+		seq := make([]byte, 3)
+
+		n, err := os.Stdin.Read(b)
+		if err != nil || n < 1 {
+			return '\x1b'
+		}
+		seq[0] = b[0]
+
+		n, err = os.Stdin.Read(b)
+		if err != nil || n < 1 {
+			return '\x1b'
+		}
+		seq[1] = b[0]
+
+		if seq[0] == '[' {
+			switch seq[1] {
+			case 'A':
+				return ARROW_UP
+			case 'B':
+				return ARROW_DOWN
+			case 'C':
+				return ARROW_RIGHT
+			case 'D':
+				return ARROW_LEFT
+			}
+		}
+
+		return '\x1b'
+	}
+
+	return int(b[0])
 }
 
 func getCursorPosition() (int, int, error) {
@@ -130,15 +168,15 @@ func getWindowSize() (int, int, error) {
 	return int(size.Col), int(size.Row), nil
 }
 
-func editorMoveCursor(key byte) {
+func editorMoveCursor(key int) {
 	switch key {
-	case 'a':
+	case ARROW_LEFT:
 		e.cx--
-	case 'd':
+	case ARROW_RIGHT:
 		e.cx++
-	case 'w':
+	case ARROW_UP:
 		e.cy--
-	case 's':
+	case ARROW_DOWN:
 		e.cy++
 	}
 }
@@ -147,12 +185,15 @@ func editorProcessKeypress() {
 	ch := editorReadKey()
 
 	switch ch {
-	case ctrlKey('q'):
+	case int(ctrlKey('q')):
 		os.Stdout.WriteString("\x1b[2J")
 		os.Stdout.WriteString("\x1b[H")
 		os.Exit(0)
 
-	case 'w', 's', 'a', 'd':
+	case ARROW_UP,
+		ARROW_DOWN,
+		ARROW_LEFT,
+		ARROW_RIGHT:
 		editorMoveCursor(ch)
 	}
 }
