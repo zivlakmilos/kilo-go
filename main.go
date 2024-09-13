@@ -347,7 +347,9 @@ func editorProcessKeypress() {
 		e.cx = 0
 
 	case END_KEY:
-		e.cx = e.screenCols - 1
+		if e.cy < e.numOfRows {
+			e.cx = e.row[e.cy].size
+		}
 
 	case PAGE_UP, PAGE_DOWN:
 		if ch == PAGE_UP {
