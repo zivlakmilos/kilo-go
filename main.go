@@ -242,13 +242,20 @@ func editorOpen(filename string) {
 }
 
 func editorMoveCursor(key int) {
+	var row *EditorRow
+	if e.cy < e.numOfRows {
+		row = &e.row[e.cy]
+	}
+
 	switch key {
 	case ARROW_LEFT:
 		if e.cx > 0 {
 			e.cx--
 		}
 	case ARROW_RIGHT:
-		e.cx++
+		if row != nil && e.cx < row.size {
+			e.cx++
+		}
 	case ARROW_UP:
 		if e.cy > 0 {
 			e.cy--
