@@ -37,7 +37,7 @@ type EditorConfig struct {
 	origTermios *unix.Termios
 
 	numOfRows int
-	row       EditorRow
+	row       []EditorRow
 }
 
 var e EditorConfig
@@ -215,6 +215,16 @@ func getWindowSize() (int, int, error) {
 	return int(size.Col), int(size.Row), nil
 }
 
+func editorAppendRow(s string) {
+	size := len(s)
+	row := EditorRow{
+		size:  size,
+		chars: s,
+	}
+	e.row = append(e.row, row)
+	e.numOfRows++
+}
+
 func editorOpen(filename string) {
 	f, err := os.Open(filename)
 	if err != nil {
@@ -223,13 +233,9 @@ func editorOpen(filename string) {
 	defer f.Close()
 
 	scanner := bufio.NewScanner(f)
-	if scanner.Scan() {
+	for scanner.Scan() {
 		line := scanner.Text()
-		size := len(line)
-
-		e.row.size = size
-		e.row.chars = line
-		e.numOfRows = 1
+		editorAppendRow(line)
 	}
 }
 
@@ -310,11 +316,11 @@ func editorDrawRows(sw io.StringWriter) {
 				sw.WriteString("~")
 			}
 		} else {
-			rowLen := e.row.size
+			rowLen := e.row[y].size
 			if rowLen > e.screenCols {
 				rowLen = e.screenCols
 			}
-			sw.WriteString(e.row.chars)
+			sw.WriteString(e.row[y].chars)
 		}
 
 		sw.WriteString("\x1b[K")
