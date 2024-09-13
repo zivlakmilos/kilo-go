@@ -350,6 +350,15 @@ func editorProcessKeypress() {
 		e.cx = e.screenCols - 1
 
 	case PAGE_UP, PAGE_DOWN:
+		if ch == PAGE_UP {
+			e.cy = e.rowOff
+		} else if ch == PAGE_DOWN {
+			e.cy = e.rowOff + e.screenRows - 1
+			if e.cy > e.numOfRows {
+				e.cy = e.numOfRows
+			}
+		}
+
 		times := e.screenRows
 		for times > 0 {
 			if ch == PAGE_UP {
