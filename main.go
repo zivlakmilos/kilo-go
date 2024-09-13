@@ -455,18 +455,18 @@ func editorDrawStatusBar(sw io.StringWriter) {
 		name = "[No Name]"
 	}
 	status := fmt.Sprintf("%.20s - %d lines", name, e.numOfRows)
-	sw.WriteString(status)
 	sx = len(status)
 	if sx > e.screenCols {
 		sx = e.screenCols
 	}
+	sw.WriteString(status[:sx])
 
 	rStatus := fmt.Sprintf("%d/%d", e.cy+1, e.numOfRows)
 	rLen := len(rStatus)
 
 	for ; sx < e.screenCols; sx++ {
 		if e.screenCols-sx == rLen {
-			sw.WriteString(rStatus)
+			sw.WriteString(rStatus[:rLen])
 			break
 		}
 		sw.WriteString(" ")
