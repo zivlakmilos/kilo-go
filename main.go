@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -23,12 +24,20 @@ const (
 	PAGE_DOWN
 )
 
+type EditorRow struct {
+	size  int
+	chars string
+}
+
 type EditorConfig struct {
 	cx          int
 	cy          int
 	screenRows  int
 	screenCols  int
 	origTermios *unix.Termios
+
+	numOfRows int
+	row       EditorRow
 }
 
 var e EditorConfig
@@ -206,6 +215,24 @@ func getWindowSize() (int, int, error) {
 	return int(size.Col), int(size.Row), nil
 }
 
+func editorOpen(filename string) {
+	f, err := os.Open(filename)
+	if err != nil {
+		die("editorOpen", err)
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	if scanner.Scan() {
+		line := scanner.Text()
+		size := len(line)
+
+		e.row.size = size
+		e.row.chars = line
+		e.numOfRows = 1
+	}
+}
+
 func editorMoveCursor(key int) {
 	switch key {
 	case ARROW_LEFT:
@@ -263,23 +290,31 @@ func editorProcessKeypress() {
 
 func editorDrawRows(sw io.StringWriter) {
 	for y := 0; y < e.screenRows; y++ {
-		if y == e.screenRows/3 {
-			welcome := fmt.Sprintf("Kilo editor -- version %s", KILO_VERSION)
-			if len(welcome) > e.screenCols {
-				welcome = welcome[:e.screenCols]
-			}
-			padding := (e.screenCols - len(welcome)) / 2
-			if padding > 0 {
+		if y >= e.numOfRows {
+			if e.numOfRows == 0 && y == e.screenRows/3 {
+				welcome := fmt.Sprintf("Kilo editor -- version %s", KILO_VERSION)
+				if len(welcome) > e.screenCols {
+					welcome = welcome[:e.screenCols]
+				}
+				padding := (e.screenCols - len(welcome)) / 2
+				if padding > 0 {
+					sw.WriteString("~")
+					padding--
+				}
+				for padding > 0 {
+					sw.WriteString(" ")
+					padding--
+				}
+				sw.WriteString(welcome)
+			} else {
 				sw.WriteString("~")
-				padding--
 			}
-			for padding > 0 {
-				sw.WriteString(" ")
-				padding--
-			}
-			sw.WriteString(welcome)
 		} else {
-			sw.WriteString("~")
+			rowLen := e.row.size
+			if rowLen > e.screenCols {
+				rowLen = e.screenCols
+			}
+			sw.WriteString(e.row.chars)
 		}
 
 		sw.WriteString("\x1b[K")
@@ -306,6 +341,7 @@ func editorRefreshScreen() {
 func initEditor() {
 	e.cx = 0
 	e.cy = 0
+	e.numOfRows = 0
 
 	c, r, err := getWindowSize()
 	if err != nil {
@@ -321,6 +357,10 @@ func main() {
 	defer disableRawMode()
 
 	initEditor()
+
+	if len(os.Args) > 1 {
+		editorOpen(os.Args[1])
+	}
 
 	for {
 		editorRefreshScreen()
