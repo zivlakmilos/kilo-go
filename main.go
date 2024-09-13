@@ -12,6 +12,8 @@ import (
 
 const KILO_VERSION = "0.0.1"
 
+const KILO_TAB_STOP = 8
+
 const (
 	ARROW_LEFT int = iota + 1000
 	ARROW_RIGHT
@@ -25,8 +27,10 @@ const (
 )
 
 type EditorRow struct {
-	size  int
-	chars string
+	size   int
+	rSize  int
+	chars  string
+	render string
 }
 
 type EditorConfig struct {
@@ -217,13 +221,36 @@ func getWindowSize() (int, int, error) {
 	return int(size.Col), int(size.Row), nil
 }
 
+func editorUpdateRow(row *EditorRow) {
+	render := ""
+	idx := 0
+	for _, ch := range row.chars {
+		idx++
+		if ch == '\t' {
+			for idx%KILO_TAB_STOP != 0 {
+				idx++
+				render += " "
+			}
+		} else {
+			render += string(ch)
+		}
+	}
+
+	row.render = render
+	row.rSize = len(row.render)
+}
+
 func editorAppendRow(s string) {
 	size := len(s)
 	row := EditorRow{
-		size:  size,
-		chars: s,
+		size:   size,
+		rSize:  0,
+		chars:  s,
+		render: "",
 	}
+	editorUpdateRow(&row)
 	e.row = append(e.row, row)
+
 	e.numOfRows++
 }
 
@@ -359,7 +386,7 @@ func editorDrawRows(sw io.StringWriter) {
 				sw.WriteString("~")
 			}
 		} else {
-			rowLen := e.row[fileRow].size
+			rowLen := e.row[fileRow].rSize
 			if rowLen < 0 {
 				rowLen = 0
 			}
@@ -373,7 +400,7 @@ func editorDrawRows(sw io.StringWriter) {
 			if rowStart > rowLen {
 				rowStart = rowLen
 			}
-			sw.WriteString(e.row[fileRow].chars[rowStart:rowLen])
+			sw.WriteString(e.row[fileRow].render[rowStart:rowLen])
 		}
 
 		sw.WriteString("\x1b[K")
