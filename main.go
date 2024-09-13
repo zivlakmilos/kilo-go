@@ -45,6 +45,7 @@ type EditorConfig struct {
 
 	numOfRows int
 	row       []EditorRow
+	filename  string
 }
 
 var e EditorConfig
@@ -270,6 +271,8 @@ func editorAppendRow(s string) {
 }
 
 func editorOpen(filename string) {
+	e.filename = filename
+
 	f, err := os.Open(filename)
 	if err != nil {
 		die("editorOpen", err)
@@ -435,10 +438,36 @@ func editorDrawRows(sw io.StringWriter) {
 		}
 
 		sw.WriteString("\x1b[K")
-		if y < e.screenRows-1 {
-			sw.WriteString("\r\n")
-		}
+		sw.WriteString("\r\n")
 	}
+}
+
+func editorDrawStatusBar(sw io.StringWriter) {
+	sw.WriteString("\x1b[7m")
+	sx := 0
+
+	name := e.filename
+	if name == "" {
+		name = "[No Name]"
+	}
+	status := fmt.Sprintf("%.20s - %d lines", name, e.numOfRows)
+	sw.WriteString(status)
+	sx = len(status)
+	if sx > e.screenCols {
+		sx = e.screenCols
+	}
+
+	rStatus := fmt.Sprintf("%d/%d", e.cy+1, e.numOfRows)
+	rLen := len(rStatus)
+
+	for ; sx < e.screenCols; sx++ {
+		if e.screenCols-sx == rLen {
+			sw.WriteString(rStatus)
+			break
+		}
+		sw.WriteString(" ")
+	}
+	sw.WriteString("\x1b[m")
 }
 
 func editorRefreshScreen() {
@@ -450,6 +479,7 @@ func editorRefreshScreen() {
 	buff.WriteString("\x1b[H")
 
 	editorDrawRows(buff)
+	editorDrawStatusBar(buff)
 
 	buff.WriteString(fmt.Sprintf("\x1b[%d;%dH",
 		(e.cy - e.rowOff + 1),
@@ -473,7 +503,7 @@ func initEditor() {
 	}
 
 	e.screenCols = c
-	e.screenRows = r
+	e.screenRows = r - 1
 }
 
 func main() {
