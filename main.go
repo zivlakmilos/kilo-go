@@ -265,6 +265,19 @@ func editorMoveCursor(key int) {
 			e.cy++
 		}
 	}
+
+	row = nil
+	if e.cy < e.numOfRows {
+		row = &e.row[e.cy]
+	}
+
+	rowLen := 0
+	if row != nil {
+		rowLen = row.size
+	}
+	if e.cx > rowLen {
+		e.cx = rowLen
+	}
 }
 
 func editorProcessKeypress() {
