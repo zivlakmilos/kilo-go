@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"golang.org/x/sys/unix"
 )
@@ -46,6 +47,9 @@ type EditorConfig struct {
 	numOfRows int
 	row       []EditorRow
 	filename  string
+
+	statusMsg     string
+	statusMsgTime time.Time
 }
 
 var e EditorConfig
@@ -468,6 +472,18 @@ func editorDrawStatusBar(sw io.StringWriter) {
 		sw.WriteString(" ")
 	}
 	sw.WriteString("\x1b[m")
+	sw.WriteString("\r\n")
+}
+
+func editorDrawMessageBar(sw io.StringWriter) {
+	sw.WriteString("\x1b[K")
+	msgLen := len(e.statusMsg)
+	if msgLen > e.screenCols {
+		msgLen = e.screenCols
+	}
+	if msgLen > 0 && (time.Now().Sub(e.statusMsgTime)).Seconds() < 5 {
+		sw.WriteString(e.statusMsg[:msgLen])
+	}
 }
 
 func editorRefreshScreen() {
@@ -480,6 +496,7 @@ func editorRefreshScreen() {
 
 	editorDrawRows(buff)
 	editorDrawStatusBar(buff)
+	editorDrawMessageBar(buff)
 
 	buff.WriteString(fmt.Sprintf("\x1b[%d;%dH",
 		(e.cy - e.rowOff + 1),
@@ -487,6 +504,11 @@ func editorRefreshScreen() {
 	buff.WriteString("\x1b[?25h")
 
 	os.Stdout.WriteString(buff.String())
+}
+
+func editorSetStatusMessage(format string, a ...any) {
+	e.statusMsg = fmt.Sprintf(format, a...)
+	e.statusMsgTime = time.Now()
 }
 
 func initEditor() {
@@ -503,7 +525,7 @@ func initEditor() {
 	}
 
 	e.screenCols = c
-	e.screenRows = r - 1
+	e.screenRows = r - 2
 }
 
 func main() {
@@ -515,6 +537,8 @@ func main() {
 	if len(os.Args) > 1 {
 		editorOpen(os.Args[1])
 	}
+
+	editorSetStatusMessage("HELP: Ctrl-Q = quit")
 
 	for {
 		editorRefreshScreen()
