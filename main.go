@@ -33,6 +33,7 @@ type EditorConfig struct {
 	cx          int
 	cy          int
 	rowOff      int
+	colOff      int
 	screenRows  int
 	screenCols  int
 	origTermios *unix.Termios
@@ -247,9 +248,7 @@ func editorMoveCursor(key int) {
 			e.cx--
 		}
 	case ARROW_RIGHT:
-		if e.cx < e.screenCols-1 {
-			e.cx++
-		}
+		e.cx++
 	case ARROW_UP:
 		if e.cy > 0 {
 			e.cy--
@@ -299,9 +298,15 @@ func editorScroll() {
 	if e.cy < e.rowOff {
 		e.rowOff = e.cy
 	}
-
 	if e.cy >= e.rowOff+e.screenRows {
 		e.rowOff = e.cy - e.screenRows + 1
+	}
+
+	if e.cx < e.colOff {
+		e.colOff = 0
+	}
+	if e.cx >= e.colOff+e.screenCols {
+		e.colOff = e.cx - e.screenCols + 1
 	}
 }
 
@@ -329,10 +334,20 @@ func editorDrawRows(sw io.StringWriter) {
 			}
 		} else {
 			rowLen := e.row[fileRow].size
+			if rowLen < 0 {
+				rowLen = 0
+			}
 			if rowLen > e.screenCols {
 				rowLen = e.screenCols
 			}
-			sw.WriteString(e.row[fileRow].chars)
+			rowStart := e.colOff
+			if rowStart < 0 {
+				rowStart = 0
+			}
+			if rowStart > rowLen {
+				rowStart = rowLen
+			}
+			sw.WriteString(e.row[fileRow].chars[rowStart:rowLen])
 		}
 
 		sw.WriteString("\x1b[K")
@@ -352,7 +367,9 @@ func editorRefreshScreen() {
 
 	editorDrawRows(buff)
 
-	buff.WriteString(fmt.Sprintf("\x1b[%d;%dH", e.cy-e.rowOff+1, e.cx+1))
+	buff.WriteString(fmt.Sprintf("\x1b[%d;%dH",
+		(e.cy - e.rowOff + 1),
+		(e.cx - e.colOff + 1)))
 	buff.WriteString("\x1b[?25h")
 
 	os.Stdout.WriteString(buff.String())
@@ -362,6 +379,7 @@ func initEditor() {
 	e.cx = 0
 	e.cy = 0
 	e.rowOff = 0
+	e.colOff = 0
 	e.numOfRows = 0
 
 	c, r, err := getWindowSize()
