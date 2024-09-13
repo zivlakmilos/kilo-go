@@ -36,6 +36,7 @@ type EditorRow struct {
 type EditorConfig struct {
 	cx          int
 	cy          int
+	rx          int
 	rowOff      int
 	colOff      int
 	screenRows  int
@@ -221,12 +222,26 @@ func getWindowSize() (int, int, error) {
 	return int(size.Col), int(size.Row), nil
 }
 
+func editorRowCxToRx(row *EditorRow, cx int) int {
+	rx := 0
+
+	for i := 0; i < cx; i++ {
+		if row.chars[i] == '\t' {
+			rx += (KILO_TAB_STOP - 1) - (rx % KILO_TAB_STOP)
+		}
+		rx++
+	}
+
+	return rx
+}
+
 func editorUpdateRow(row *EditorRow) {
 	render := ""
 	idx := 0
 	for _, ch := range row.chars {
 		idx++
 		if ch == '\t' {
+			render += " "
 			for idx%KILO_TAB_STOP != 0 {
 				idx++
 				render += " "
@@ -348,6 +363,11 @@ func editorProcessKeypress() {
 }
 
 func editorScroll() {
+	e.rx = 0
+	if e.cy < e.numOfRows {
+		e.rx = editorRowCxToRx(&e.row[e.cy], e.cx)
+	}
+
 	if e.cy < e.rowOff {
 		e.rowOff = e.cy
 	}
@@ -355,11 +375,11 @@ func editorScroll() {
 		e.rowOff = e.cy - e.screenRows + 1
 	}
 
-	if e.cx < e.colOff {
+	if e.rx < e.colOff {
 		e.colOff = 0
 	}
-	if e.cx >= e.colOff+e.screenCols {
-		e.colOff = e.cx - e.screenCols + 1
+	if e.rx >= e.colOff+e.screenCols {
+		e.colOff = e.rx - e.screenCols + 1
 	}
 }
 
@@ -422,7 +442,7 @@ func editorRefreshScreen() {
 
 	buff.WriteString(fmt.Sprintf("\x1b[%d;%dH",
 		(e.cy - e.rowOff + 1),
-		(e.cx - e.colOff + 1)))
+		(e.rx - e.colOff + 1)))
 	buff.WriteString("\x1b[?25h")
 
 	os.Stdout.WriteString(buff.String())
@@ -431,6 +451,7 @@ func editorRefreshScreen() {
 func initEditor() {
 	e.cx = 0
 	e.cy = 0
+	e.rx = 0
 	e.rowOff = 0
 	e.colOff = 0
 	e.numOfRows = 0
