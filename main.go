@@ -251,6 +251,9 @@ func editorMoveCursor(key int) {
 	case ARROW_LEFT:
 		if e.cx > 0 {
 			e.cx--
+		} else if e.cy > 0 {
+			e.cy--
+			e.cx = e.row[e.cy].size
 		}
 	case ARROW_RIGHT:
 		if row != nil && e.cx < row.size {
