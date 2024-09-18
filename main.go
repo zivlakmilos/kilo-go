@@ -274,6 +274,25 @@ func editorAppendRow(s string) {
 	e.numOfRows++
 }
 
+func editorRowInsertChar(row *EditorRow, at int, ch int) {
+	if at < 0 || at > row.size {
+		at = row.size
+	}
+
+	row.chars = row.chars[0:at] + string(byte(ch)) + row.chars[at:]
+	row.size++
+	editorUpdateRow(row)
+}
+
+func editorInsertChar(ch int) {
+	if e.cy == e.numOfRows {
+		editorAppendRow("")
+	}
+
+	editorRowInsertChar(&e.row[e.cy], e.cx, ch)
+	e.cx++
+}
+
 func editorOpen(filename string) {
 	e.filename = filename
 
@@ -377,6 +396,9 @@ func editorProcessKeypress() {
 			}
 			times--
 		}
+
+	default:
+		editorInsertChar(ch)
 	}
 }
 
