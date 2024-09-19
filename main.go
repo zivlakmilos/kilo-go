@@ -52,6 +52,8 @@ type EditorConfig struct {
 
 	statusMsg     string
 	statusMsgTime time.Time
+
+	dirty int
 }
 
 var e EditorConfig
@@ -274,6 +276,7 @@ func editorAppendRow(s string) {
 	e.row = append(e.row, row)
 
 	e.numOfRows++
+	e.dirty++
 }
 
 func editorRowInsertChar(row *EditorRow, at int, ch int) {
@@ -284,6 +287,7 @@ func editorRowInsertChar(row *EditorRow, at int, ch int) {
 	row.chars = row.chars[0:at] + string(byte(ch)) + row.chars[at:]
 	row.size++
 	editorUpdateRow(row)
+	e.dirty++
 }
 
 func editorInsertChar(ch int) {
@@ -320,6 +324,8 @@ func editorOpen(filename string) {
 		line := scanner.Text()
 		editorAppendRow(line)
 	}
+
+	e.dirty = 0
 }
 
 func editorSave() {
@@ -354,6 +360,7 @@ func editorSave() {
 		return
 	}
 
+	e.dirty = 0
 	editorSetStatusMessage("%d bytes written to disk", n)
 }
 
@@ -540,7 +547,11 @@ func editorDrawStatusBar(sw io.StringWriter) {
 	if name == "" {
 		name = "[No Name]"
 	}
-	status := fmt.Sprintf("%.20s - %d lines", name, e.numOfRows)
+	dirty := ""
+	if e.dirty > 0 {
+		dirty = "(modified)"
+	}
+	status := fmt.Sprintf("%.20s - %d lines %s", name, e.numOfRows, dirty)
 	sx = len(status)
 	if sx > e.screenCols {
 		sx = e.screenCols
@@ -604,6 +615,7 @@ func initEditor() {
 	e.rowOff = 0
 	e.colOff = 0
 	e.numOfRows = 0
+	e.dirty = 0
 
 	c, r, err := getWindowSize()
 	if err != nil {
