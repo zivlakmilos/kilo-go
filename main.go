@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"unicode"
 
 	"golang.org/x/sys/unix"
 )
@@ -407,7 +408,11 @@ func editorOpen(filename string) {
 
 func editorSave() {
 	if e.filename == "" {
-		return
+		e.filename = editorPrompt("Save as: %s (ESC to cancel)")
+		if e.filename == "" {
+			editorSetStatusMessage("Save aborted")
+			return
+		}
 	}
 
 	var err error
@@ -439,6 +444,31 @@ func editorSave() {
 
 	e.dirty = 0
 	editorSetStatusMessage("%d bytes written to disk", n)
+}
+
+func editorPrompt(prompt string) string {
+	str := ""
+	for {
+		editorSetStatusMessage(prompt, str)
+		editorRefreshScreen()
+
+		ch := editorReadKey()
+		if ch == DEL_KEY || ch == int(ctrlKey('h')) || ch == BACKSPACE {
+			if str != "" {
+				str = str[:len(str)-1]
+			}
+		} else if ch == '\x1b' {
+			editorSetStatusMessage("")
+			return ""
+		} else if ch == '\r' {
+			if str != "" {
+				editorSetStatusMessage("")
+				return str
+			}
+		} else if !unicode.IsControl(rune(ch)) && ch < 128 {
+			str += string(ch)
+		}
+	}
 }
 
 func editorMoveCursor(key int) {
