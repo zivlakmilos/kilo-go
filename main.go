@@ -293,6 +293,17 @@ func editorRowInsertChar(row *EditorRow, at int, ch int) {
 	e.dirty++
 }
 
+func editorRowDelChar(row *EditorRow, at int) {
+	if at < 0 || at >= row.size {
+		return
+	}
+
+	row.chars = row.chars[:at] + row.chars[at+1:]
+	row.size--
+	editorUpdateRow(row)
+	e.dirty++
+}
+
 func editorInsertChar(ch int) {
 	if e.cy == e.numOfRows {
 		editorAppendRow("")
@@ -300,6 +311,17 @@ func editorInsertChar(ch int) {
 
 	editorRowInsertChar(&e.row[e.cy], e.cx, ch)
 	e.cx++
+}
+
+func editorDelChar() {
+	if e.cy >= e.numOfRows {
+		return
+	}
+
+	if e.cx > 0 {
+		editorRowDelChar(&e.row[e.cy], e.cx-1)
+		e.cx--
+	}
 }
 
 func editorRowsToString() string {
@@ -450,7 +472,10 @@ func editorProcessKeypress() {
 	case BACKSPACE,
 		int(ctrlKey('h')),
 		DEL_KEY:
-		// TODO:
+		if ch == DEL_KEY {
+			editorMoveCursor(ARROW_RIGHT)
+		}
+		editorDelChar()
 		break
 
 	case PAGE_UP, PAGE_DOWN:
