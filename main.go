@@ -282,6 +282,16 @@ func editorAppendRow(s string) {
 	e.dirty++
 }
 
+func editorDelRow(at int) {
+	if at < 0 || at >= e.numOfRows {
+		return
+	}
+
+	e.row = append(e.row[:at], e.row[at+1:]...)
+	e.numOfRows--
+	e.dirty++
+}
+
 func editorRowInsertChar(row *EditorRow, at int, ch int) {
 	if at < 0 || at > row.size {
 		at = row.size
@@ -289,6 +299,13 @@ func editorRowInsertChar(row *EditorRow, at int, ch int) {
 
 	row.chars = row.chars[0:at] + string(byte(ch)) + row.chars[at:]
 	row.size++
+	editorUpdateRow(row)
+	e.dirty++
+}
+
+func editorRowAppendString(row *EditorRow, s string) {
+	row.chars += s
+	row.size += len(s)
 	editorUpdateRow(row)
 	e.dirty++
 }
@@ -314,13 +331,22 @@ func editorInsertChar(ch int) {
 }
 
 func editorDelChar() {
-	if e.cy >= e.numOfRows {
+	if e.cy == e.numOfRows {
+		return
+	}
+	if e.cx == 0 && e.cy == 0 {
 		return
 	}
 
+	row := &e.row[e.cy]
 	if e.cx > 0 {
-		editorRowDelChar(&e.row[e.cy], e.cx-1)
+		editorRowDelChar(row, e.cx-1)
 		e.cx--
+	} else {
+		e.cx = e.row[e.cy-1].size
+		editorRowAppendString(&e.row[e.cy-1], row.chars)
+		editorDelRow(e.cy)
+		e.cy--
 	}
 }
 
