@@ -12,9 +12,11 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const KILO_VERSION = "0.0.1"
-
-const KILO_TAB_STOP = 8
+const (
+	KILO_VERSION    = "0.0.1"
+	KILO_TAB_STOP   = 8
+	KILO_QUIT_TIMES = 3
+)
 
 const (
 	BACKSPACE  int = 127
@@ -53,7 +55,8 @@ type EditorConfig struct {
 	statusMsg     string
 	statusMsgTime time.Time
 
-	dirty int
+	dirty     int
+	quitTimes int
 }
 
 var e EditorConfig
@@ -418,6 +421,11 @@ func editorProcessKeypress() {
 		break
 
 	case int(ctrlKey('q')):
+		if e.dirty > 0 && e.quitTimes > 0 {
+			editorSetStatusMessage("WARNING!!! File has unsaved changes. Press Ctrl-Q %d more times to quit.", e.quitTimes)
+			e.quitTimes--
+			return
+		}
 		os.Stdout.WriteString("\x1b[2J")
 		os.Stdout.WriteString("\x1b[H")
 		os.Exit(0)
@@ -471,6 +479,8 @@ func editorProcessKeypress() {
 	default:
 		editorInsertChar(ch)
 	}
+
+	e.quitTimes = KILO_QUIT_TIMES
 }
 
 func editorScroll() {
@@ -616,6 +626,7 @@ func initEditor() {
 	e.colOff = 0
 	e.numOfRows = 0
 	e.dirty = 0
+	e.quitTimes = KILO_QUIT_TIMES
 
 	c, r, err := getWindowSize()
 	if err != nil {
