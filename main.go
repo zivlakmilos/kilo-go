@@ -267,7 +267,11 @@ func editorUpdateRow(row *EditorRow) {
 	row.rSize = len(row.render)
 }
 
-func editorAppendRow(s string) {
+func editorInsertRow(at int, s string) {
+	if at < 0 || at > e.numOfRows {
+		return
+	}
+
 	size := len(s)
 	row := EditorRow{
 		size:   size,
@@ -275,8 +279,15 @@ func editorAppendRow(s string) {
 		chars:  s,
 		render: "",
 	}
-	editorUpdateRow(&row)
-	e.row = append(e.row, row)
+
+	if at == e.numOfRows {
+		e.row = append(e.row, row)
+	} else {
+		e.row = append(e.row, row)
+		e.row = append(e.row[:at+1], e.row[at:]...)
+		e.row[at] = row
+	}
+	editorUpdateRow(&e.row[at])
 
 	e.numOfRows++
 	e.dirty++
@@ -323,11 +334,26 @@ func editorRowDelChar(row *EditorRow, at int) {
 
 func editorInsertChar(ch int) {
 	if e.cy == e.numOfRows {
-		editorAppendRow("")
+		editorInsertRow(e.numOfRows, "")
 	}
 
 	editorRowInsertChar(&e.row[e.cy], e.cx, ch)
 	e.cx++
+}
+
+func editorInsertNewline() {
+	if e.cx == 0 {
+		editorInsertRow(e.cy, "")
+	} else {
+		row := &e.row[e.cy]
+		editorInsertRow(e.cy+1, row.chars[e.cx:])
+		row = &e.row[e.cy]
+		row.chars = row.chars[:e.cx]
+		row.size = e.cx
+		editorUpdateRow(row)
+	}
+	e.cy++
+	e.cx = 0
 }
 
 func editorDelChar() {
@@ -373,7 +399,7 @@ func editorOpen(filename string) {
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
-		editorAppendRow(line)
+		editorInsertRow(e.numOfRows, line)
 	}
 
 	e.dirty = 0
@@ -465,7 +491,7 @@ func editorProcessKeypress() {
 
 	switch ch {
 	case '\r':
-		// TODO:
+		editorInsertNewline()
 		break
 
 	case int(ctrlKey('q')):
