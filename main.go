@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -294,6 +295,17 @@ func editorInsertChar(ch int) {
 	e.cx++
 }
 
+func editorRowsToString() string {
+	var builder strings.Builder
+
+	for _, r := range e.row {
+		builder.WriteString(r.chars)
+		builder.WriteString("\n")
+	}
+
+	return builder.String()
+}
+
 func editorOpen(filename string) {
 	e.filename = filename
 
@@ -308,6 +320,41 @@ func editorOpen(filename string) {
 		line := scanner.Text()
 		editorAppendRow(line)
 	}
+}
+
+func editorSave() {
+	if e.filename == "" {
+		return
+	}
+
+	var err error
+	defer func() {
+		if err != nil {
+			editorSetStatusMessage("Can't save! I/O error: %s", err)
+			return
+		}
+	}()
+
+	str := editorRowsToString()
+
+	f, err := os.Create(e.filename)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	data := []byte(str)
+	err = f.Truncate(int64(len(data)))
+	if err != nil {
+		return
+	}
+
+	n, err := f.Write(data)
+	if err != nil {
+		return
+	}
+
+	editorSetStatusMessage("%d bytes written to disk", n)
 }
 
 func editorMoveCursor(key int) {
@@ -367,6 +414,9 @@ func editorProcessKeypress() {
 		os.Stdout.WriteString("\x1b[2J")
 		os.Stdout.WriteString("\x1b[H")
 		os.Exit(0)
+
+	case int(ctrlKey('s')):
+		editorSave()
 
 	case ARROW_UP,
 		ARROW_DOWN,
@@ -574,7 +624,7 @@ func main() {
 		editorOpen(os.Args[1])
 	}
 
-	editorSetStatusMessage("HELP: Ctrl-Q = quit")
+	editorSetStatusMessage("HELP: Ctrl-S = save | Ctrl-Q = quit")
 
 	for {
 		editorRefreshScreen()
