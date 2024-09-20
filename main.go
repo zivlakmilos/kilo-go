@@ -480,7 +480,18 @@ func editorFindCallback(str string, ch int) {
 }
 
 func editorFind() {
-	editorPrompt("Search: %s (ESC to cancel)", editorFindCallback)
+	savedCx := e.cx
+	savedCy := e.cy
+	savedColOff := e.colOff
+	savedRowOff := e.rowOff
+
+	query := editorPrompt("Search: %s (ESC to cancel)", editorFindCallback)
+	if query == "" {
+		e.cx = savedCx
+		e.cy = savedCy
+		e.colOff = savedColOff
+		e.rowOff = savedRowOff
+	}
 }
 
 func editorPrompt(prompt string, callback func(s string, ch int)) string {
