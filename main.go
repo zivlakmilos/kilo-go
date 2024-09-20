@@ -425,7 +425,7 @@ func editorOpen(filename string) {
 
 func editorSave() {
 	if e.filename == "" {
-		e.filename = editorPrompt("Save as: %s (ESC to cancel)")
+		e.filename = editorPrompt("Save as: %s (ESC to cancel)", nil)
 		if e.filename == "" {
 			editorSetStatusMessage("Save aborted")
 			return
@@ -463,14 +463,13 @@ func editorSave() {
 	editorSetStatusMessage("%d bytes written to disk", n)
 }
 
-func editorFind() {
-	query := editorPrompt("Search: %s (ESC to cancel)")
-	if query == "" {
+func editorFindCallback(str string, ch int) {
+	if ch == '\r' || ch == '\x1b' {
 		return
 	}
 
 	for i, row := range e.row {
-		match := strings.Index(row.render, query)
+		match := strings.Index(row.render, str)
 		if match >= 0 {
 			e.cy = i
 			e.cx = editorRowRxToCx(&row, match)
@@ -480,7 +479,11 @@ func editorFind() {
 	}
 }
 
-func editorPrompt(prompt string) string {
+func editorFind() {
+	editorPrompt("Search: %s (ESC to cancel)", editorFindCallback)
+}
+
+func editorPrompt(prompt string, callback func(s string, ch int)) string {
 	str := ""
 	for {
 		editorSetStatusMessage(prompt, str)
@@ -493,14 +496,24 @@ func editorPrompt(prompt string) string {
 			}
 		} else if ch == '\x1b' {
 			editorSetStatusMessage("")
+			if callback != nil {
+				callback(str, ch)
+			}
 			return ""
 		} else if ch == '\r' {
 			if str != "" {
 				editorSetStatusMessage("")
+				if callback != nil {
+					callback(str, ch)
+				}
 				return str
 			}
 		} else if !unicode.IsControl(rune(ch)) && ch < 128 {
 			str += string(ch)
+		}
+
+		if callback != nil {
+			callback(str, ch)
 		}
 	}
 }
