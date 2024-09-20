@@ -248,6 +248,23 @@ func editorRowCxToRx(row *EditorRow, cx int) int {
 	return rx
 }
 
+func editorRowRxToCx(row *EditorRow, rx int) int {
+	curRx := 0
+	cx := 0
+	for cx = 0; cx < row.size; cx++ {
+		if row.chars[cx] == '\t' {
+			curRx += (KILO_TAB_STOP - 1) - (cx % KILO_TAB_STOP)
+		}
+		curRx++
+
+		if curRx > rx {
+			return cx
+		}
+	}
+
+	return cx
+}
+
 func editorUpdateRow(row *EditorRow) {
 	render := ""
 	idx := 0
@@ -446,6 +463,23 @@ func editorSave() {
 	editorSetStatusMessage("%d bytes written to disk", n)
 }
 
+func editorFind() {
+	query := editorPrompt("Search: %s (ESC to cancel)")
+	if query == "" {
+		return
+	}
+
+	for i, row := range e.row {
+		match := strings.Index(row.render, query)
+		if match >= 0 {
+			e.cy = i
+			e.cx = editorRowRxToCx(&row, match)
+			e.rowOff = e.numOfRows
+			break
+		}
+	}
+}
+
 func editorPrompt(prompt string) string {
 	str := ""
 	for {
@@ -550,6 +584,9 @@ func editorProcessKeypress() {
 		if e.cy < e.numOfRows {
 			e.cx = e.row[e.cy].size
 		}
+
+	case int(ctrlKey('f')):
+		editorFind()
 
 	case BACKSPACE,
 		int(ctrlKey('h')),
@@ -754,7 +791,7 @@ func main() {
 		editorOpen(os.Args[1])
 	}
 
-	editorSetStatusMessage("HELP: Ctrl-S = save | Ctrl-Q = quit")
+	editorSetStatusMessage("HELP: Ctrl-S = save | Ctrl-Q = quit | Ctrl-F = find")
 
 	for {
 		editorRefreshScreen()
