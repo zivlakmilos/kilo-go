@@ -58,6 +58,9 @@ type EditorConfig struct {
 
 	dirty     int
 	quitTimes int
+
+	findLastMatch int
+	findDirection int
 }
 
 var e EditorConfig
@@ -465,14 +468,36 @@ func editorSave() {
 
 func editorFindCallback(str string, ch int) {
 	if ch == '\r' || ch == '\x1b' {
+		e.findLastMatch = -1
+		e.findDirection = 1
 		return
+	} else if ch == ARROW_RIGHT || ch == ARROW_DOWN {
+		e.findDirection = 1
+	} else if ch == ARROW_LEFT || ch == ARROW_UP {
+		e.findDirection = -1
+	} else {
+		e.findLastMatch = -1
+		e.findDirection = 1
 	}
 
-	for i, row := range e.row {
+	if e.findLastMatch == -1 {
+		e.findDirection = 1
+	}
+	current := e.findLastMatch
+	for i := 0; i < e.numOfRows; i++ {
+		current += e.findDirection
+		if current < 0 {
+			current = e.numOfRows - 1
+		} else if current >= e.numOfRows {
+			current = 0
+		}
+
+		row := &e.row[current]
 		match := strings.Index(row.render, str)
 		if match >= 0 {
-			e.cy = i
-			e.cx = editorRowRxToCx(&row, match)
+			e.findLastMatch = current
+			e.cy = current
+			e.cx = editorRowRxToCx(row, match)
 			e.rowOff = e.numOfRows
 			break
 		}
@@ -485,7 +510,10 @@ func editorFind() {
 	savedColOff := e.colOff
 	savedRowOff := e.rowOff
 
-	query := editorPrompt("Search: %s (ESC to cancel)", editorFindCallback)
+	e.findLastMatch = -1
+	e.findDirection = 1
+
+	query := editorPrompt("Search: %s (Use ESC/Arrows/Enter)", editorFindCallback)
 	if query == "" {
 		e.cx = savedCx
 		e.cy = savedCy
