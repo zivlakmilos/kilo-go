@@ -32,11 +32,17 @@ const (
 	PAGE_DOWN
 )
 
+const (
+	HL_NORMAL byte = iota
+	HL_NUMBER
+)
+
 type EditorRow struct {
 	size   int
 	rSize  int
 	chars  string
 	render string
+	hl     []byte
 }
 
 type EditorConfig struct {
@@ -238,6 +244,29 @@ func getWindowSize() (int, int, error) {
 	return int(size.Col), int(size.Row), nil
 }
 
+func editorUpdateSyntax(row *EditorRow) {
+	row.hl = make([]byte, row.rSize)
+
+	for i := range row.hl {
+		row.hl[i] = HL_NORMAL
+	}
+
+	for i := range row.hl {
+		if unicode.IsDigit(rune(row.render[i])) {
+			row.hl[i] = HL_NUMBER
+		}
+	}
+}
+
+func editorSyntaxToColor(hl byte) int {
+	switch hl {
+	case HL_NUMBER:
+		return 31
+	default:
+		return 37
+	}
+}
+
 func editorRowCxToRx(row *EditorRow, cx int) int {
 	rx := 0
 
@@ -286,6 +315,8 @@ func editorUpdateRow(row *EditorRow) {
 
 	row.render = render
 	row.rSize = len(row.render)
+
+	editorUpdateSyntax(row)
 }
 
 func editorInsertRow(at int, s string) {
@@ -738,15 +769,25 @@ func editorDrawRows(sw io.StringWriter) {
 				rowStart = rowLen
 			}
 			str := e.row[fileRow].render[rowStart:rowLen]
-			for _, ch := range str {
-				if unicode.IsDigit(ch) {
-					sw.WriteString("\x1b[31m")
+			hl := e.row[fileRow].hl[rowStart:rowLen]
+			currentColor := -1
+			for j, ch := range str {
+				if hl[j] == HL_NORMAL {
+					if currentColor != -1 {
+						sw.WriteString("\x1b[39m")
+						currentColor = -1
+					}
 					sw.WriteString(string(ch))
-					sw.WriteString("\x1b[39m")
 				} else {
+					color := editorSyntaxToColor(hl[j])
+					if color != currentColor {
+						sw.WriteString(fmt.Sprintf("\x1b[%dm", color))
+						currentColor = color
+					}
 					sw.WriteString(string(ch))
 				}
 			}
+			sw.WriteString("\x1b[39m")
 		}
 
 		sw.WriteString("\x1b[K")
