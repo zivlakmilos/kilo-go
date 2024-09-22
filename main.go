@@ -66,8 +66,10 @@ type EditorConfig struct {
 	dirty     int
 	quitTimes int
 
-	findLastMatch int
-	findDirection int
+	findLastMatch   int
+	findDirection   int
+	findSavedHlLine int
+	findSavedHl     []byte
 }
 
 var e EditorConfig
@@ -501,6 +503,11 @@ func editorSave() {
 }
 
 func editorFindCallback(str string, ch int) {
+	if e.findSavedHl != nil {
+		copy(e.row[e.findSavedHlLine].hl, e.findSavedHl)
+		e.findSavedHl = nil
+	}
+
 	if ch == '\r' || ch == '\x1b' {
 		e.findLastMatch = -1
 		e.findDirection = 1
@@ -533,6 +540,10 @@ func editorFindCallback(str string, ch int) {
 			e.cy = current
 			e.cx = editorRowRxToCx(row, match)
 			e.rowOff = e.numOfRows
+
+			e.findSavedHl = make([]byte, row.rSize)
+			copy(e.findSavedHl, row.hl)
+			e.findSavedHlLine = current
 
 			for i := match; i < match+len(str); i++ {
 				row.hl[i] = HL_MATCH
