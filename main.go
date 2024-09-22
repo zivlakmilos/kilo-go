@@ -35,6 +35,7 @@ const (
 const (
 	HL_NORMAL byte = iota
 	HL_NUMBER
+	HL_MATCH
 )
 
 type EditorRow struct {
@@ -262,6 +263,8 @@ func editorSyntaxToColor(hl byte) int {
 	switch hl {
 	case HL_NUMBER:
 		return 31
+	case HL_MATCH:
+		return 34
 	default:
 		return 37
 	}
@@ -530,6 +533,10 @@ func editorFindCallback(str string, ch int) {
 			e.cy = current
 			e.cx = editorRowRxToCx(row, match)
 			e.rowOff = e.numOfRows
+
+			for i := match; i < match+len(str); i++ {
+				row.hl[i] = HL_MATCH
+			}
 			break
 		}
 	}
