@@ -737,7 +737,16 @@ func editorDrawRows(sw io.StringWriter) {
 			if rowStart > rowLen {
 				rowStart = rowLen
 			}
-			sw.WriteString(e.row[fileRow].render[rowStart:rowLen])
+			str := e.row[fileRow].render[rowStart:rowLen]
+			for _, ch := range str {
+				if unicode.IsDigit(ch) {
+					sw.WriteString("\x1b[31m")
+					sw.WriteString(string(ch))
+					sw.WriteString("\x1b[39m")
+				} else {
+					sw.WriteString(string(ch))
+				}
+			}
 		}
 
 		sw.WriteString("\x1b[K")
