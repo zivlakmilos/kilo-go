@@ -35,12 +35,14 @@ const (
 
 const (
 	HL_NORMAL byte = iota
+	HL_STRING
 	HL_NUMBER
 	HL_MATCH
 )
 
 const (
 	HL_HIGHTLIGHT_NUMBERS = (1 << 0)
+	HL_HIGHTLIGHT_STRINGS = (1 << 1)
 )
 
 type EditorSyntax struct {
@@ -93,7 +95,7 @@ var hldb = []EditorSyntax{
 	{
 		filetype:  "c",
 		filematch: cHlExtensions,
-		flags:     HL_HIGHTLIGHT_NUMBERS,
+		flags:     HL_HIGHTLIGHT_NUMBERS | HL_HIGHTLIGHT_STRINGS,
 	},
 }
 
@@ -298,6 +300,7 @@ func editorUpdateSyntax(row *EditorRow) {
 	}
 
 	prevSep := true
+	inString := byte(0)
 
 	i := 0
 	for i < row.rSize {
@@ -305,6 +308,30 @@ func editorUpdateSyntax(row *EditorRow) {
 		prevHl := HL_NORMAL
 		if i > 0 {
 			prevHl = row.hl[i-1]
+		}
+
+		if e.syntax.flags&HL_HIGHTLIGHT_STRINGS != 0 {
+			if inString != 0 {
+				row.hl[i] = HL_STRING
+				if ch == '\\' && i+1 < row.rSize {
+					row.hl[i+1] = HL_STRING
+					i += 2
+					continue
+				}
+				if ch == inString {
+					inString = 0
+				}
+				i++
+				prevSep = true
+				continue
+			} else {
+				if ch == '"' || ch == '\'' {
+					inString = ch
+					row.hl[i] = HL_STRING
+					i++
+					continue
+				}
+			}
 		}
 
 		if e.syntax.flags&HL_HIGHTLIGHT_NUMBERS != 0 {
@@ -326,6 +353,8 @@ func editorSyntaxToColor(hl byte) int {
 	switch hl {
 	case HL_NUMBER:
 		return 31
+	case HL_STRING:
+		return 35
 	case HL_MATCH:
 		return 34
 	default:
