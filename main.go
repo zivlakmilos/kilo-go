@@ -247,6 +247,22 @@ func getWindowSize() (int, int, error) {
 	return int(size.Col), int(size.Row), nil
 }
 
+func isSeparator(ch rune) bool {
+	if unicode.IsSpace(ch) {
+		return true
+	}
+
+	chars := []rune{0, ',', '.', '(', ')', '+', '-', '/', '*', '=', '~', '%', '<', '>', '[', ']', ';'}
+
+	for _, c := range chars {
+		if c == ch {
+			return true
+		}
+	}
+
+	return unicode.IsSpace(rune(ch))
+}
+
 func editorUpdateSyntax(row *EditorRow) {
 	row.hl = make([]byte, row.rSize)
 
@@ -254,10 +270,26 @@ func editorUpdateSyntax(row *EditorRow) {
 		row.hl[i] = HL_NORMAL
 	}
 
-	for i := range row.hl {
-		if unicode.IsDigit(rune(row.render[i])) {
-			row.hl[i] = HL_NUMBER
+	prevSep := true
+
+	i := 0
+	for i < row.rSize {
+		ch := row.render[i]
+		prevHl := HL_NORMAL
+		if i > 0 {
+			prevHl = row.hl[i-1]
 		}
+
+		if (unicode.IsDigit(rune(ch)) && (prevSep || prevHl == HL_NUMBER)) ||
+			(ch == '.' && prevHl == HL_NUMBER) {
+			row.hl[i] = HL_NUMBER
+			i++
+			prevSep = false
+			continue
+		}
+
+		prevSep = isSeparator(rune(ch))
+		i++
 	}
 }
 
