@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"strings"
 	"time"
 	"unicode"
@@ -37,6 +38,16 @@ const (
 	HL_NUMBER
 	HL_MATCH
 )
+
+const (
+	HL_HIGHTLIGHT_NUMBERS = (1 << 0)
+)
+
+type EditorSyntax struct {
+	filetype  string
+	filematch []string
+	flags     int
+}
 
 type EditorRow struct {
 	size   int
@@ -70,9 +81,21 @@ type EditorConfig struct {
 	findDirection   int
 	findSavedHlLine int
 	findSavedHl     []byte
+
+	syntax *EditorSyntax
 }
 
 var e EditorConfig
+
+var cHlExtensions = []string{".c", ".h", ".cpp"}
+
+var hldb = []EditorSyntax{
+	{
+		filetype:  "c",
+		filematch: cHlExtensions,
+		flags:     HL_HIGHTLIGHT_NUMBERS,
+	},
+}
 
 func die(fn string, err error) {
 	os.Stdout.WriteString("\x1b[2J")
@@ -270,6 +293,10 @@ func editorUpdateSyntax(row *EditorRow) {
 		row.hl[i] = HL_NORMAL
 	}
 
+	if e.syntax == nil {
+		return
+	}
+
 	prevSep := true
 
 	i := 0
@@ -280,12 +307,14 @@ func editorUpdateSyntax(row *EditorRow) {
 			prevHl = row.hl[i-1]
 		}
 
-		if (unicode.IsDigit(rune(ch)) && (prevSep || prevHl == HL_NUMBER)) ||
-			(ch == '.' && prevHl == HL_NUMBER) {
-			row.hl[i] = HL_NUMBER
-			i++
-			prevSep = false
-			continue
+		if e.syntax.flags&HL_HIGHTLIGHT_NUMBERS != 0 {
+			if (unicode.IsDigit(rune(ch)) && (prevSep || prevHl == HL_NUMBER)) ||
+				(ch == '.' && prevHl == HL_NUMBER) {
+				row.hl[i] = HL_NUMBER
+				i++
+				prevSep = false
+				continue
+			}
 		}
 
 		prevSep = isSeparator(rune(ch))
@@ -301,6 +330,29 @@ func editorSyntaxToColor(hl byte) int {
 		return 34
 	default:
 		return 37
+	}
+}
+
+func editorSelectSyntaxHightlight() {
+	e.syntax = nil
+	if e.filename == "" {
+		return
+	}
+
+	ext := path.Ext(e.filename)
+
+	for _, s := range hldb {
+		for _, fm := range s.filematch {
+			isExt := fm[0] == '.'
+			if (isExt && ext == fm) || (!isExt && strings.Contains(e.filename, fm)) {
+				e.syntax = &s
+
+				for i := range e.row {
+					editorUpdateSyntax(&e.row[i])
+				}
+				return
+			}
+		}
 	}
 }
 
@@ -479,6 +531,8 @@ func editorRowsToString() string {
 func editorOpen(filename string) {
 	e.filename = filename
 
+	editorSelectSyntaxHightlight()
+
 	f, err := os.Open(filename)
 	if err != nil {
 		die("editorOpen", err)
@@ -501,6 +555,7 @@ func editorSave() {
 			editorSetStatusMessage("Save aborted")
 			return
 		}
+		editorSelectSyntaxHightlight()
 	}
 
 	var err error
@@ -864,7 +919,12 @@ func editorDrawStatusBar(sw io.StringWriter) {
 	}
 	sw.WriteString(status[:sx])
 
-	rStatus := fmt.Sprintf("%d/%d", e.cy+1, e.numOfRows)
+	fileType := "no ft"
+	if e.syntax != nil {
+		fileType = e.syntax.filetype
+	}
+
+	rStatus := fmt.Sprintf("%s | %d/%d", fileType, e.cy+1, e.numOfRows)
 	rLen := len(rStatus)
 
 	for ; sx < e.screenCols; sx++ {
@@ -923,6 +983,7 @@ func initEditor() {
 	e.numOfRows = 0
 	e.dirty = 0
 	e.quitTimes = KILO_QUIT_TIMES
+	e.syntax = nil
 
 	c, r, err := getWindowSize()
 	if err != nil {
