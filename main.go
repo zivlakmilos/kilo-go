@@ -35,6 +35,7 @@ const (
 
 const (
 	HL_NORMAL byte = iota
+	HL_COMMENT
 	HL_STRING
 	HL_NUMBER
 	HL_MATCH
@@ -49,6 +50,8 @@ type EditorSyntax struct {
 	filetype  string
 	filematch []string
 	flags     int
+
+	singlelineCommentStart string
 }
 
 type EditorRow struct {
@@ -96,6 +99,8 @@ var hldb = []EditorSyntax{
 		filetype:  "c",
 		filematch: cHlExtensions,
 		flags:     HL_HIGHTLIGHT_NUMBERS | HL_HIGHTLIGHT_STRINGS,
+
+		singlelineCommentStart: "//",
 	},
 }
 
@@ -299,6 +304,9 @@ func editorUpdateSyntax(row *EditorRow) {
 		return
 	}
 
+	scc := e.syntax.singlelineCommentStart
+	sccLen := len(scc)
+
 	prevSep := true
 	inString := byte(0)
 
@@ -308,6 +316,15 @@ func editorUpdateSyntax(row *EditorRow) {
 		prevHl := HL_NORMAL
 		if i > 0 {
 			prevHl = row.hl[i-1]
+		}
+
+		if sccLen > 0 && inString == 0 {
+			if strings.HasPrefix(row.render[i:], scc) {
+				for i < row.rSize {
+					row.hl[i] = HL_COMMENT
+					i++
+				}
+			}
 		}
 
 		if e.syntax.flags&HL_HIGHTLIGHT_STRINGS != 0 {
@@ -353,6 +370,8 @@ func editorSyntaxToColor(hl byte) int {
 	switch hl {
 	case HL_NUMBER:
 		return 31
+	case HL_COMMENT:
+		return 36
 	case HL_STRING:
 		return 35
 	case HL_MATCH:
