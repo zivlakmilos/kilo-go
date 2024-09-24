@@ -36,6 +36,8 @@ const (
 const (
 	HL_NORMAL byte = iota
 	HL_COMMENT
+	HL_KEYWORD1
+	HL_KEYWORD2
 	HL_STRING
 	HL_NUMBER
 	HL_MATCH
@@ -50,6 +52,8 @@ type EditorSyntax struct {
 	filetype  string
 	filematch []string
 	flags     int
+
+	keywords []string
 
 	singlelineCommentStart string
 }
@@ -92,13 +96,23 @@ type EditorConfig struct {
 
 var e EditorConfig
 
-var cHlExtensions = []string{".c", ".h", ".cpp"}
+var (
+	cHlExtensions = []string{".c", ".h", ".cpp"}
+	cHlKeywords   = []string{
+		"switch", "if", "while", "for", "break", "continue", "return", "else",
+		"struct", "union", "typedef", "static", "enum", "class", "case",
+
+		"int|", "long|", "double|", "float|", "char|", "unsigned|", "signed|", "void|",
+	}
+)
 
 var hldb = []EditorSyntax{
 	{
 		filetype:  "c",
 		filematch: cHlExtensions,
 		flags:     HL_HIGHTLIGHT_NUMBERS | HL_HIGHTLIGHT_STRINGS,
+
+		keywords: cHlKeywords,
 
 		singlelineCommentStart: "//",
 	},
@@ -304,6 +318,8 @@ func editorUpdateSyntax(row *EditorRow) {
 		return
 	}
 
+	keywords := e.syntax.keywords
+
 	scc := e.syntax.singlelineCommentStart
 	sccLen := len(scc)
 
@@ -361,6 +377,40 @@ func editorUpdateSyntax(row *EditorRow) {
 			}
 		}
 
+		if prevSep {
+			isFound := false
+			for _, kw := range keywords {
+				kwlen := len(kw)
+				kw2 := kw[kwlen-1] == '|'
+				if kw2 {
+					kw = kw[:kwlen-1]
+					kwlen--
+				}
+
+				if i+kwlen > row.rSize {
+					continue
+				}
+
+				if kw == row.render[i:i+kwlen] && (i+kwlen == row.rSize || isSeparator(rune(row.render[i+kwlen]))) {
+					end := i + kwlen
+					for i < end {
+						if kw2 {
+							row.hl[i] = HL_KEYWORD2
+						} else {
+							row.hl[i] = HL_KEYWORD1
+						}
+						i++
+					}
+					isFound = true
+					break
+				}
+			}
+			if isFound {
+				prevSep = false
+				continue
+			}
+		}
+
 		prevSep = isSeparator(rune(ch))
 		i++
 	}
@@ -372,6 +422,10 @@ func editorSyntaxToColor(hl byte) int {
 		return 31
 	case HL_COMMENT:
 		return 36
+	case HL_KEYWORD1:
+		return 33
+	case HL_KEYWORD2:
+		return 32
 	case HL_STRING:
 		return 35
 	case HL_MATCH:
