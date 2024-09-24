@@ -979,7 +979,20 @@ func editorDrawRows(sw io.StringWriter) {
 			hl := e.row[fileRow].hl[rowStart:rowLen]
 			currentColor := -1
 			for j, ch := range str {
-				if hl[j] == HL_NORMAL {
+				if unicode.IsControl(ch) {
+					sym := rune('?')
+					if ch <= 26 {
+						sym = '@' + ch
+					}
+
+					sw.WriteString("\x1b[7m")
+					sw.WriteString(string(sym))
+					sw.WriteString("\x1b[m")
+
+					if currentColor != -1 {
+						sw.WriteString(fmt.Sprintf("\x1b[%dm", currentColor))
+					}
+				} else if hl[j] == HL_NORMAL {
 					if currentColor != -1 {
 						sw.WriteString("\x1b[39m")
 						currentColor = -1
