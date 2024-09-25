@@ -36,6 +36,7 @@ const (
 const (
 	HL_NORMAL byte = iota
 	HL_COMMENT
+	HL_MLCOMMENT
 	HL_KEYWORD1
 	HL_KEYWORD2
 	HL_STRING
@@ -56,14 +57,18 @@ type EditorSyntax struct {
 	keywords []string
 
 	singlelineCommentStart string
+	multilineCommentStart  string
+	multilineCommentEnd    string
 }
 
 type EditorRow struct {
-	size   int
-	rSize  int
-	chars  string
-	render string
-	hl     []byte
+	idx           int
+	size          int
+	rSize         int
+	chars         string
+	render        string
+	hl            []byte
+	hlOpenComment bool
 }
 
 type EditorConfig struct {
@@ -111,10 +116,11 @@ var hldb = []EditorSyntax{
 		filetype:  "c",
 		filematch: cHlExtensions,
 		flags:     HL_HIGHTLIGHT_NUMBERS | HL_HIGHTLIGHT_STRINGS,
-
-		keywords: cHlKeywords,
+		keywords:  cHlKeywords,
 
 		singlelineCommentStart: "//",
+		multilineCommentStart:  "/*",
+		multilineCommentEnd:    "*/",
 	},
 }
 
@@ -320,11 +326,20 @@ func editorUpdateSyntax(row *EditorRow) {
 
 	keywords := e.syntax.keywords
 
-	scc := e.syntax.singlelineCommentStart
-	sccLen := len(scc)
+	scs := e.syntax.singlelineCommentStart
+	mcs := e.syntax.multilineCommentStart
+	mce := e.syntax.multilineCommentEnd
+
+	sccLen := len(scs)
+	mcsLen := len(mcs)
+	mceLen := len(mce)
 
 	prevSep := true
 	inString := byte(0)
+	inComment := false
+	if row.idx > 0 {
+		inComment = e.row[row.idx-1].hlOpenComment
+	}
 
 	i := 0
 	for i < row.rSize {
@@ -334,11 +349,40 @@ func editorUpdateSyntax(row *EditorRow) {
 			prevHl = row.hl[i-1]
 		}
 
-		if sccLen > 0 && inString == 0 {
-			if strings.HasPrefix(row.render[i:], scc) {
+		if sccLen > 0 && inString == 0 && !inComment {
+			if strings.HasPrefix(row.render[i:], scs) {
 				for i < row.rSize {
 					row.hl[i] = HL_COMMENT
 					i++
+				}
+			}
+		}
+
+		if mcsLen > 0 && mceLen > 0 && inString == 0 {
+			if inComment {
+				row.hl[i] = HL_MLCOMMENT
+				if i+mceLen <= row.rSize && row.render[i:i+mceLen] == mce {
+					end := i + mcsLen
+					for i < end {
+						row.hl[i] = HL_MLCOMMENT
+						i++
+					}
+					inComment = false
+					prevSep = true
+					continue
+				} else {
+					i++
+					continue
+				}
+			} else {
+				if i+mcsLen <= row.rSize && row.render[i:i+mcsLen] == mcs {
+					end := i + mcsLen
+					for i < end {
+						row.hl[i] = HL_MLCOMMENT
+						i++
+					}
+					inComment = true
+					continue
 				}
 			}
 		}
@@ -414,13 +458,19 @@ func editorUpdateSyntax(row *EditorRow) {
 		prevSep = isSeparator(rune(ch))
 		i++
 	}
+
+	changed := row.hlOpenComment != inComment
+	row.hlOpenComment = inComment
+	if changed && row.idx+1 < e.numOfRows {
+		editorUpdateSyntax(&e.row[row.idx+1])
+	}
 }
 
 func editorSyntaxToColor(hl byte) int {
 	switch hl {
 	case HL_NUMBER:
 		return 31
-	case HL_COMMENT:
+	case HL_COMMENT, HL_MLCOMMENT:
 		return 36
 	case HL_KEYWORD1:
 		return 33
@@ -517,10 +567,12 @@ func editorInsertRow(at int, s string) {
 
 	size := len(s)
 	row := EditorRow{
-		size:   size,
-		rSize:  0,
-		chars:  s,
-		render: "",
+		idx:           at,
+		size:          size,
+		rSize:         0,
+		chars:         s,
+		render:        "",
+		hlOpenComment: false,
 	}
 
 	if at == e.numOfRows {
@@ -530,6 +582,11 @@ func editorInsertRow(at int, s string) {
 		e.row = append(e.row[:at+1], e.row[at:]...)
 		e.row[at] = row
 	}
+
+	for i := at + 1; i < e.numOfRows; i++ {
+		e.row[i].idx++
+	}
+
 	editorUpdateRow(&e.row[at])
 
 	e.numOfRows++
@@ -542,6 +599,11 @@ func editorDelRow(at int) {
 	}
 
 	e.row = append(e.row[:at], e.row[at+1:]...)
+
+	for i := at; i < e.numOfRows; i++ {
+		e.row[i].idx--
+	}
+
 	e.numOfRows--
 	e.dirty++
 }
