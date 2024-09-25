@@ -600,7 +600,7 @@ func editorDelRow(at int) {
 
 	e.row = append(e.row[:at], e.row[at+1:]...)
 
-	for i := at; i < e.numOfRows; i++ {
+	for i := at; i < e.numOfRows-1; i++ {
 		e.row[i].idx--
 	}
 
